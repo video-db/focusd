@@ -75,7 +75,7 @@ At any point during the day you can:
 
 ## Architecture
 
-![Focusd Architecture](../../assets/focusd-architecture.png)
+![Focusd Architecture](assets/focusd-architecture.png)
 
 ## How summarization works
 
