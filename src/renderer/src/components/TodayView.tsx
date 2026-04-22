@@ -20,6 +20,7 @@ export default function TodayView({ timeFormat }: Props) {
   const [drillDownRange, setDrillDownRange] = useState<{
     start: number;
     end: number;
+    initialLevel: 'summaries' | 'activities';
   } | null>(null);
 
   const handleGenerateSummary = async () => {
@@ -83,19 +84,21 @@ export default function TodayView({ timeFormat }: Props) {
   ];
 
   const summaryText = onDemandSummary || data.latestSummary;
+  const hasHistory = data.totalTrackedSecs > 0 || data.segments.length > 0 || Boolean(data.latestSummary);
 
   const openDrillDown = () => {
     if (data.segments.length > 0) {
       setDrillDownRange({
         start: data.segments[0].startTime,
         end: data.segments[data.segments.length - 1].endTime,
+        initialLevel: 'summaries',
       });
     } else {
       const now = Math.floor(Date.now() / 1000);
       const d = new Date();
       d.setHours(0, 0, 0, 0);
       const dayStart = Math.floor(d.getTime() / 1000);
-      setDrillDownRange({ start: dayStart, end: now });
+      setDrillDownRange({ start: dayStart, end: now, initialLevel: 'summaries' });
     }
   };
 
@@ -107,22 +110,16 @@ export default function TodayView({ timeFormat }: Props) {
           <div>
             <h1 className="text-2xl">{formatDate(data.date)}</h1>
           </div>
-          <div>
-            {data.isRecording ? (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-destructive/10 text-destructive rounded-full text-sm">
-                <motion.div
-                  className="w-2 h-2 rounded-full bg-destructive"
-                  animate={{ opacity: [1, 0.3, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                />
-                <span>Live</span>
-              </div>
-            ) : (
-              <div className="px-3 py-1.5 bg-muted text-muted-foreground rounded-full text-sm">
-                Dashboard
-              </div>
-            )}
-          </div>
+          {data.isRecording && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-destructive/10 text-destructive rounded-full text-sm">
+              <motion.div
+                className="w-2 h-2 rounded-full bg-destructive"
+                animate={{ opacity: [1, 0.3, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+              <span>Live</span>
+            </div>
+          )}
         </div>
 
         {/* Stat cards */}
@@ -191,7 +188,7 @@ export default function TodayView({ timeFormat }: Props) {
             <button
               onClick={handleGenerateSummary}
               disabled={generatingSummary}
-              className="flex items-center gap-2 px-4 py-2 text-sm bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-accent text-accent-foreground rounded-lg shadow-sm hover:bg-accent/85 hover:shadow transition-all disabled:opacity-50"
             >
               <Sparkles className={`w-4 h-4 ${generatingSummary ? 'animate-spin' : ''}`} />
               <span>{generatingSummary ? 'Generating...' : 'Generate Now'}</span>
@@ -211,7 +208,7 @@ export default function TodayView({ timeFormat }: Props) {
             </div>
           ) : (
             <p className="text-muted-foreground text-sm">
-              Start recording to generate AI insights.
+              {hasHistory ? 'No AI insight has been generated for this view yet.' : 'Start tracking to generate AI insights.'}
             </p>
           )}
         </div>
@@ -224,7 +221,7 @@ export default function TodayView({ timeFormat }: Props) {
               segments={data.segments}
               timeFormat={timeFormat}
               onSegmentClick={(seg) =>
-                setDrillDownRange({ start: seg.startTime, end: seg.endTime })
+                setDrillDownRange({ start: seg.startTime, end: seg.endTime, initialLevel: 'activities' })
               }
             />
           </div>
@@ -268,6 +265,7 @@ export default function TodayView({ timeFormat }: Props) {
           start={drillDownRange.start}
           end={drillDownRange.end}
           timeFormat={timeFormat}
+          initialLevel={drillDownRange.initialLevel}
           onClose={() => setDrillDownRange(null)}
         />
       )}
@@ -284,10 +282,10 @@ function EmptyState() {
         </div>
         <h3 className="text-xl mb-3 tracking-tight">Ready to focus?</h3>
         <p className="text-sm text-muted-foreground leading-relaxed mb-8">
-          Start a recording session to track your productivity and get AI-powered insights.
+          Start a tracking session to follow your productivity and get AI-powered insights.
         </p>
         <div className="inline-flex items-center gap-2 text-sm text-accent bg-accent/10 px-5 py-2.5 rounded-full">
-          Click "Start Recording" in the sidebar
+          Click "Start Tracking" in the sidebar
           <ArrowRight size={14} />
         </div>
       </div>

@@ -182,18 +182,30 @@ async function classifyAndStore(
       existingContext = parts.join('\n') + '\nReuse these exact names if the activity matches.\n\n';
     }
 
-    const eventsPayload = sceneTexts
+    const visualEvidence = sceneTexts
       .slice(0, 20)
-      .map((t, i) => `[${i + 1}] ${t.slice(0, 200)}`)
-      .join('\n');
-    const transcriptPayload = transcriptParts.length > 0
-      ? `\nAudio transcripts:\n${transcriptParts.slice(0, 5).map((t, i) => `[T${i + 1}] ${t.slice(0, 200)}`).join('\n')}`
-      : '';
+      .map((t, i) => `[V${i + 1}] ${t.slice(0, 200)}`)
+      .join('\n') || '(none)';
+    const audioEvidence = transcriptParts
+      .slice(0, 5)
+      .map((t, i) => `[A${i + 1}] ${t.slice(0, 200)}`)
+      .join('\n') || '(none)';
+
+    const evidencePayload = [
+      `has_visual: ${sceneTexts.length > 0}`,
+      `has_audio: ${transcriptParts.length > 0}`,
+      '',
+      'Visual evidence:',
+      visualEvidence,
+      '',
+      'Audio evidence:',
+      audioEvidence,
+    ].join('\n');
 
     const cfg = getConfig();
     const prompt = getPrompt('segment_classification', {
       existing_context: existingContext,
-      events: eventsPayload + transcriptPayload,
+      events: evidencePayload,
     });
 
     const raw = await callLLM({

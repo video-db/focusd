@@ -59,8 +59,8 @@ export default function Sidebar({ currentView, onViewChange }: Props) {
       case 'idle':
         return {
           icon: <Circle className="w-4 h-4 fill-current" />,
-          text: 'Start Recording',
-          className: 'bg-accent text-accent-foreground hover:bg-accent/90',
+          text: 'Start Tracking',
+          className: 'bg-accent text-accent-foreground font-semibold shadow-sm hover:bg-accent/85 hover:shadow',
         };
       case 'starting':
         return {
@@ -71,8 +71,8 @@ export default function Sidebar({ currentView, onViewChange }: Props) {
       case 'recording':
         return {
           icon: <Square className="w-4 h-4 fill-current" />,
-          text: 'Stop Recording',
-          className: 'bg-destructive/10 text-destructive hover:bg-destructive/20',
+          text: 'Stop Tracking',
+          className: 'bg-destructive/10 text-destructive font-semibold hover:bg-destructive/20',
         };
       case 'stopping':
         return {
@@ -161,7 +161,7 @@ export default function Sidebar({ currentView, onViewChange }: Props) {
                   animate={{ opacity: [1, 0.3, 1] }}
                   transition={{ duration: 2, repeat: Infinity }}
                 />
-                <span className="text-sm text-destructive">Recording active</span>
+                <span className="text-sm text-destructive">Tracking active</span>
               </div>
             </div>
           )}

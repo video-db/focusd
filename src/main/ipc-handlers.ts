@@ -15,6 +15,7 @@ import {
   generateDailySummary,
   generateDeepDive,
   generateOnDemandSummary,
+  generateMicroSummary,
 } from './services/summarizer';
 import {
   startIdleDetection,
@@ -305,6 +306,12 @@ export function registerIPCHandlers(): void {
     log(TAG, 'summary:generateNow invoked');
     try {
       const result = await generateOnDemandSummary();
+      db.insertSummarySnapshot({
+        date: db.todayDateString(),
+        kind: 'on_demand',
+        summary: result,
+        sourceSessionId: capture.getSessionId() || undefined,
+      });
       log(TAG, `summary:generateNow result: "${result.slice(0, 80)}..."`);
       return result;
     } catch (e) {
@@ -322,6 +329,20 @@ export function registerIPCHandlers(): void {
     }
     log(TAG, `summary:daily result: ${daily ? 'found' : 'null'}`);
     return daily;
+  });
+
+  ipcMain.handle('summary:daily-refresh', async (_e, date: string) => {
+    log(TAG, `summary:daily-refresh requested for ${date}`);
+    try {
+      if (date === db.todayDateString() && capture.isRecording()) {
+        await flushToSegments();
+        await generateMicroSummary();
+      }
+      return await generateDailySummary(date);
+    } catch (e) {
+      error(TAG, `summary:daily-refresh failed for ${date}`, e);
+      return db.getDailySummary(date);
+    }
   });
 
   ipcMain.handle('summary:session-list', (_e, date: string) => {
@@ -376,6 +397,12 @@ export function registerIPCHandlers(): void {
     if (session) {
       const latest = db.getLatestMicroSummary(session.id);
       if (latest) latestSummary = latest.summary;
+    }
+
+    if (!latestSummary) {
+      latestSummary = db.getLatestSummarySnapshot(date)?.summary
+        || db.getLatestSessionSummaryForDate(date)?.summary
+        || db.getLatestMicroSummaryForDate(date)?.summary;
     }
 
     return {

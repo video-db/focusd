@@ -26,6 +26,7 @@ const api: FocusdAPI = {
   summary: {
     generateNow: () => ipcRenderer.invoke('summary:generateNow'),
     daily: (date) => ipcRenderer.invoke('summary:daily', date),
+    refreshDaily: (date) => ipcRenderer.invoke('summary:daily-refresh', date),
     sessionList: (date) => ipcRenderer.invoke('summary:session-list', date),
     microList: (start, end) => ipcRenderer.invoke('summary:micro-list', start, end),
     segments: (start, end) => ipcRenderer.invoke('summary:segments', start, end),

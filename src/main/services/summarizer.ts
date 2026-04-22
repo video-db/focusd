@@ -334,35 +334,41 @@ export async function generateDailySummary(date: string): Promise<DailySummary |
 
   const dayStart = Math.floor(new Date(date + 'T00:00:00').getTime() / 1000);
   const dayEnd = dayStart + 86400;
-  const micros = sessions.length === 0 ? db.getMicroSummaries(dayStart, dayEnd) : [];
+  const allMicros = db.getMicroSummaries(dayStart, dayEnd);
+  const trailingMicros = sessions.length > 0
+    ? allMicros.filter((m) => m.endTime > Math.max(...sessions.map((s) => s.endTime)))
+    : allMicros;
 
   log(TAG, `generateDailySummary for ${date}`, {
     sessions: sessions.length,
-    micros: micros.length,
+    micros: trailingMicros.length,
     appUsage: appUsage.length,
     totalTrackedMins: Math.round(totalTracked / 60),
   });
 
-  if (sessions.length === 0 && micros.length === 0) {
+  if (sessions.length === 0 && trailingMicros.length === 0) {
     warn(TAG, 'No sessions or micros to generate daily summary from');
     return null;
   }
 
-  const inputData = sessions.length > 0
-    ? sessions.map((s) => ({
+  const inputData = [
+    ...sessions.map((s) => ({
+        type: 'session',
         summary: s.summary,
         activities: s.keyActivities,
         projects: s.projects,
         apps: s.appStats,
         productivity: s.productivityLabel,
         duration_readable: fmtDuration(s.endTime - s.startTime),
-      }))
-    : micros.map((m) => ({
+      })),
+    ...trailingMicros.map((m) => ({
+        type: 'quick_insight',
         summary: m.summary,
         apps: m.appBreakdown,
         productivity: m.productivityLabel,
         duration_readable: fmtDuration(m.endTime - m.startTime),
-      }));
+      })),
+  ];
 
   const cfg = getConfig();
   const statsBlock = [
@@ -418,6 +424,7 @@ export async function generateDailySummary(date: string): Promise<DailySummary |
       totalDistractedSecs: distracted,
       topApps: Object.fromEntries(appUsage.map((a) => [a.app, a.seconds])),
       topProjects: Object.fromEntries(projects.map((p) => [p.project, p.seconds])),
+      generatedAt: Math.floor(Date.now() / 1000),
     };
 
     db.upsertDailySummary(daily);

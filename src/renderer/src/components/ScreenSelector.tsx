@@ -41,7 +41,7 @@ export default function ScreenSelector({ open, onSelect, onClose }: Props) {
           <div>
             <h2 className="text-xl">Select Screen</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Choose which display to record
+              Choose which display to track
             </p>
           </div>
           <button
@@ -126,10 +126,10 @@ export default function ScreenSelector({ open, onSelect, onClose }: Props) {
             className={`px-6 py-2 rounded-lg transition-colors ${
               !selectedId
                 ? 'bg-accent/50 text-accent-foreground/50 cursor-not-allowed'
-                : 'bg-accent text-accent-foreground hover:bg-accent/90'
+                : 'bg-accent text-accent-foreground font-semibold hover:bg-accent/85'
             }`}
           >
-            Start Recording
+            Start Tracking
           </button>
         </div>
       </div>

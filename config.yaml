@@ -40,8 +40,11 @@ prompts:
   # Sent to VideoDB visual indexing pipeline
   visual_indexing: |
     Analyze this screen recording frame. Only describe what you can actually see.
+    Focus on the active work area first: where typing, cursor focus, scrolling, editing, or reading is happening.
+    Treat dock icons, app trays, sidebars, browser tab strips, bookmarks bars, background windows, and other persistent UI chrome as supporting evidence only.
+    Never identify the active app from passive UI alone.
     Extract:
-    1. Application name: read it from the title bar, menu bar, dock, or window chrome. If the name is not clearly visible, use a generic category like "Browser", "Code Editor", "Terminal", "Chat App", "Email Client", "Design Tool", "Document Editor", "Music Player", "Video Player". Never guess a specific app name you cannot read.
+    1. Application name: identify the app owning the active work area. Read it from the active window chrome, title bar, or other direct evidence. Use dock, tab titles, and sidebars only to confirm an app already supported by the active area. If the name is not clearly visible, use a generic category like "Browser", "Code Editor", "Terminal", "Chat App", "Email Client", "Design Tool", "Document Editor", "Music Player", "Video Player". Never guess a specific app name you cannot read.
     2. What the person is doing based on visible content
     3. Specific visible content:
        - Browser: page title, domain if visible (without .com/.org/etc suffixes), topic
@@ -52,6 +55,7 @@ prompts:
     4. Any other tab titles or window titles visible
     Naming rules:
     - App names: only use the specific name if you can read it on screen. Otherwise use the generic category.
+    - Do not turn a website, tab title, document title, project name, or chat label into an app name unless the native app itself is clearly visible.
     - Website/service names: use the clean product name without domain suffixes (e.g. "Framer" not "framer.com", "GitHub" not "github.com")
     - Project names: use the exact name as shown, no suffixes or variations
     - Be consistent: the same app/site/project must always use the same name across frames
@@ -71,6 +75,18 @@ prompts:
     system: |
       You classify screen activity into structured segments for {{app_name}}.
       Given screen descriptions and audio transcripts from a ~1 minute window, identify what the user was doing.
+
+      PRIORITY OF EVIDENCE:
+      - Focus on the active work region first: where typing, editing, scrolling, cursor focus, command execution, or reading is actually happening.
+      - Persistent UI chrome is supporting evidence only: never use dock icons, app trays, sidebars, tab strips, browser bookmarks bars, or background windows as the primary source of truth.
+      - Window titles and tab titles can help identify the app or project only after the active work region is identified.
+      - If the visible evidence suggests a web app inside a browser, the app is still the browser unless the native app itself is clearly visible.
+
+      MODALITY RULES:
+      - If visual and audio evidence are both present, use both.
+      - If only one modality is present, reason strictly from that modality.
+      - Never infer facts from a missing modality.
+      - Spoken content can help identify meetings, discussions, or reading aloud, but it must not override clear visual evidence about which app is actually in use.
 
       For each distinct application used, return:
       - app: The application name. Use the specific name if identifiable (e.g. "VS Code", "Spotify", "Chrome", "Figma"). If not clearly identifiable, use a generic category: "Browser", "Code Editor", "Terminal", "Chat App", "Music Player", "Email Client", "Design Tool", "Document Editor", "Video Player".
@@ -122,8 +138,17 @@ prompts:
       - "Spotify" (not "Music Player" if Spotify is visible)
       - "Browser" (use this if you cannot identify which browser it is)
 
+      ACTIVE WORK EXAMPLES:
+      - If someone is typing in a code editor and the dock also shows Slack, the app is the code editor.
+      - If someone is scrolling a browser article and multiple tabs are visible, the app is the browser and the page title is supporting context.
+      - If a sidebar lists Notion or Obsidian but the active pane is Chrome, do not report Notion or Obsidian.
+      - If a tab title says "VideoDB Console" but the browser chrome is visible, the app is the browser, not "VideoDB Console".
+
       ANTI-HALLUCINATION:
       - Only report apps you can identify from the descriptions. Never invent.
+      - Never convert a website, tab title, project name, chat label, or page title into a native app name unless the native app is clearly visible.
+      - If the active region cannot support a concrete app name, use a generic category or "Unknown".
+      - If a project is not clearly identifiable from the active work, set project to null.
       - If you cannot determine the app, use "Unknown".
       - If the screen shows only a desktop or wallpaper, return app "Desktop", category "other".
 

@@ -82,6 +82,7 @@ export interface DailySummary {
   totalDistractedSecs: number;
   topApps: Record<string, number>;
   topProjects: Record<string, number>;
+  generatedAt?: number;
 }
 
 export interface DrillDownSection {
@@ -228,6 +229,7 @@ export interface FocusdAPI {
   summary: {
     generateNow: () => Promise<string>;
     daily: (date: string) => Promise<DailySummary | null>;
+    refreshDaily: (date: string) => Promise<DailySummary | null>;
     sessionList: (date: string) => Promise<SessionSummary[]>;
     microList: (start: number, end: number) => Promise<MicroSummary[]>;
     segments: (start: number, end: number) => Promise<ActivitySegment[]>;

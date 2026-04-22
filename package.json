@@ -7,6 +7,7 @@
     "dev": "unset ELECTRON_RUN_AS_NODE; electron-vite dev",
     "build": "unset ELECTRON_RUN_AS_NODE; electron-vite build",
     "preview": "unset ELECTRON_RUN_AS_NODE; electron-vite preview",
+    "dist:mac": "unset ELECTRON_RUN_AS_NODE; electron-vite build && electron-builder --mac --arm64 --x64",
     "package:mac": "unset ELECTRON_RUN_AS_NODE; electron-vite build && electron-builder --mac",
     "package:win": "unset ELECTRON_RUN_AS_NODE; electron-vite build && electron-builder --win",
     "reset:db": "rm -f \"$HOME/Library/Application Support/videodb-focusd/focusd.db\" \"$HOME/Library/Application Support/VideoDB Focusd/focusd.db\" && echo 'Database deleted (dev + packaged). It will be recreated on next launch.'",

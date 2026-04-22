@@ -418,14 +418,14 @@ function ReadyStep({ onComplete }: { onComplete: () => void }) {
         <h2 className="text-3xl tracking-tight">You're all set</h2>
         <p className="text-muted-foreground leading-relaxed text-lg">
           Focusd is ready to help you understand and improve your productivity.
-          Hit "Start Recording" in the sidebar to begin your first session.
+          Hit "Start Tracking" in the sidebar to begin your first session.
         </p>
       </div>
 
       <div className="space-y-4 text-sm text-muted-foreground">
         <div className="flex items-start gap-3">
           <div className="w-6 h-6 rounded-full bg-accent/10 flex items-center justify-center text-accent text-xs shrink-0 mt-0.5">1</div>
-          <span>Click <strong className="text-foreground">Start Recording</strong> to begin tracking</span>
+          <span>Click <strong className="text-foreground">Start Tracking</strong> to begin tracking</span>
         </div>
         <div className="flex items-start gap-3">
           <div className="w-6 h-6 rounded-full bg-accent/10 flex items-center justify-center text-accent text-xs shrink-0 mt-0.5">2</div>

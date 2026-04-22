@@ -1,0 +1,6 @@
+node_modules/
+out/
+release/
+.env
+.DS_Store
+publish.sh

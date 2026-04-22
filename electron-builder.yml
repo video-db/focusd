@@ -15,6 +15,7 @@ mac:
   category: public.app-category.productivity
   icon: assets/icon.png
   identity: null
+  artifactName: focusd-${version}-${arch}.${ext}
   target:
     - dmg
 win:

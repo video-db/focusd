@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, RefreshCw } from 'lucide-react';
 import { useAPI } from '../hooks/useIPC';
 import { formatDate, formatDuration, formatTimeRange, todayString } from '../lib/format';
 import type { TimeFormat, DailySummary, SessionSummary } from '../../../shared/types';
@@ -22,7 +22,9 @@ export default function HistoryView({ timeFormat }: Props) {
   const [daily, setDaily] = useState<DailySummary | null>(null);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshingDaily, setRefreshingDaily] = useState(false);
   const [drillDownRange, setDrillDownRange] = useState<{ start: number; end: number } | null>(null);
+  const [, setNow] = useState(() => Date.now());
 
   const fetchData = useCallback(() => {
     return Promise.all([api.summary.daily(date), api.summary.sessionList(date)])
@@ -41,6 +43,11 @@ export default function HistoryView({ timeFormat }: Props) {
     }
   }, [date, fetchData]);
 
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
   const shiftDate = (days: number) => {
     const d = new Date(date + 'T00:00:00');
     d.setDate(d.getDate() + days);
@@ -48,6 +55,24 @@ export default function HistoryView({ timeFormat }: Props) {
   };
 
   const isToday = date === todayString();
+
+  const refreshDailyRecap = async () => {
+    setRefreshingDaily(true);
+    try {
+      const [nextDaily, nextSessions] = await Promise.all([
+        api.summary.refreshDaily(date),
+        api.summary.sessionList(date),
+      ]);
+      setDaily(nextDaily);
+      setSessions(nextSessions);
+    } finally {
+      setRefreshingDaily(false);
+    }
+  };
+
+  const lastUpdatedLabel = daily?.generatedAt
+    ? formatRelativeUpdateTime(daily.generatedAt)
+    : null;
 
   const getProductivityColor = (productivity: string) => {
     switch (productivity) {
@@ -70,6 +95,14 @@ export default function HistoryView({ timeFormat }: Props) {
           <div>
             <h1 className="text-2xl">Recap</h1>
           </div>
+          <button
+            onClick={refreshDailyRecap}
+            disabled={refreshingDaily}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-sm disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshingDaily ? 'animate-spin' : ''}`} />
+            <span>{refreshingDaily ? 'Refreshing recap...' : 'Refresh recap'}</span>
+          </button>
         </div>
 
         {/* Date navigation */}
@@ -85,7 +118,7 @@ export default function HistoryView({ timeFormat }: Props) {
             <CalendarIcon className="w-5 h-5 text-muted-foreground" />
             <span className="text-lg">{formatDate(date)}</span>
             {isToday && (
-              <span className="px-2 py-0.5 bg-accent/10 text-accent-foreground rounded-full text-xs">
+              <span className="px-2 py-0.5 bg-accent/10 text-foreground rounded-full text-xs">
                 Today
               </span>
             )}
@@ -109,7 +142,7 @@ export default function HistoryView({ timeFormat }: Props) {
             <CalendarIcon className="w-16 h-16 text-muted-foreground/30 mb-4" />
             <h3 className="text-lg mb-2">No data recorded for this date</h3>
             <p className="text-sm text-muted-foreground max-w-sm">
-              Select a different date or start recording to build your history.
+              Select a different date or start tracking to build your history.
             </p>
           </div>
         ) : (
@@ -117,7 +150,19 @@ export default function HistoryView({ timeFormat }: Props) {
             {/* Daily Summary Card */}
             {daily && (
               <div className="bg-card rounded-xl p-8 border border-border space-y-6">
-                <h2 className="text-2xl">{daily.headline}</h2>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl">{daily.headline}</h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      A full-day recap built from your tracked activity, quick insights, and completed sessions for this date.
+                    </p>
+                    {lastUpdatedLabel && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Last updated {lastUpdatedLabel}
+                      </p>
+                    )}
+                  </div>
+                </div>
 
                 <p className="text-muted-foreground leading-relaxed">{daily.summary}</p>
 
@@ -222,4 +267,22 @@ export default function HistoryView({ timeFormat }: Props) {
       )}
     </div>
   );
+}
+
+function formatRelativeUpdateTime(epochSecs: number): string {
+  const diff = Math.max(0, Math.floor(Date.now() / 1000) - epochSecs);
+  if (diff < 10) return 'just now';
+  if (diff < 60) return `${diff}s ago`;
+
+  const mins = Math.floor(diff / 60);
+  if (mins === 1) return '1 min ago';
+  if (mins < 60) return `${mins} min ago`;
+
+  const hours = Math.floor(mins / 60);
+  if (hours === 1) return '1 hour ago';
+  if (hours < 24) return `${hours} hours ago`;
+
+  const days = Math.floor(hours / 24);
+  if (days === 1) return '1 day ago';
+  return `${days} days ago`;
 }

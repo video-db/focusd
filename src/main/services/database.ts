@@ -99,32 +99,43 @@ function createTables(): void {
     );
     CREATE INDEX IF NOT EXISTS idx_l3_date ON session_summaries(date);
 
-    CREATE TABLE IF NOT EXISTS daily_summaries (
-      date TEXT PRIMARY KEY,
-      headline TEXT,
-      summary TEXT NOT NULL,
-      highlights TEXT NOT NULL DEFAULT '[]',
-      improvements TEXT NOT NULL DEFAULT '[]',
-      drill_down_sections TEXT NOT NULL DEFAULT '[]',
-      total_tracked_secs INTEGER DEFAULT 0,
-      total_idle_secs INTEGER DEFAULT 0,
-      total_productive_secs INTEGER DEFAULT 0,
-      total_distracted_secs INTEGER DEFAULT 0,
-      top_apps TEXT NOT NULL DEFAULT '{}',
-      top_projects TEXT NOT NULL DEFAULT '{}'
-    );
+     CREATE TABLE IF NOT EXISTS daily_summaries (
+       date TEXT PRIMARY KEY,
+       headline TEXT,
+       summary TEXT NOT NULL,
+       highlights TEXT NOT NULL DEFAULT '[]',
+       improvements TEXT NOT NULL DEFAULT '[]',
+       drill_down_sections TEXT NOT NULL DEFAULT '[]',
+       total_tracked_secs INTEGER DEFAULT 0,
+       total_idle_secs INTEGER DEFAULT 0,
+       total_productive_secs INTEGER DEFAULT 0,
+       total_distracted_secs INTEGER DEFAULT 0,
+       top_apps TEXT NOT NULL DEFAULT '{}',
+       top_projects TEXT NOT NULL DEFAULT '{}',
+       generated_at INTEGER
+     );
 
-    CREATE TABLE IF NOT EXISTS deep_dive_cache (
-      time_range_key TEXT PRIMARY KEY,
-      analysis TEXT NOT NULL,
-      video_timestamp_start REAL,
-      video_timestamp_end REAL,
-      generated_at INTEGER NOT NULL
-    );
+     CREATE TABLE IF NOT EXISTS deep_dive_cache (
+       time_range_key TEXT PRIMARY KEY,
+       analysis TEXT NOT NULL,
+       video_timestamp_start REAL,
+       video_timestamp_end REAL,
+       generated_at INTEGER NOT NULL
+     );
 
-    CREATE TABLE IF NOT EXISTS idle_periods (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      session_id TEXT,
+     CREATE TABLE IF NOT EXISTS summary_snapshots (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       date TEXT NOT NULL,
+       kind TEXT NOT NULL,
+       summary TEXT NOT NULL,
+       source_session_id TEXT,
+       generated_at INTEGER NOT NULL
+     );
+     CREATE INDEX IF NOT EXISTS idx_summary_snapshots_date ON summary_snapshots(date, generated_at DESC);
+
+     CREATE TABLE IF NOT EXISTS idle_periods (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       session_id TEXT,
       start_time INTEGER NOT NULL,
       end_time INTEGER NOT NULL,
       duration_secs INTEGER NOT NULL
@@ -141,6 +152,11 @@ function migrateSchema(): void {
   if (!cols.some((c) => c.name === 'project')) {
     db.exec('ALTER TABLE micro_summaries ADD COLUMN project TEXT');
   }
+
+   const dailyCols = db.prepare("PRAGMA table_info(daily_summaries)").all() as { name: string }[];
+   if (!dailyCols.some((c) => c.name === 'generated_at')) {
+     db.exec('ALTER TABLE daily_summaries ADD COLUMN generated_at INTEGER');
+   }
 }
 
 function seedDefaults(): void {
@@ -500,10 +516,10 @@ function mapSession(row: Record<string, unknown>): SessionSummary {
 export function upsertDailySummary(ds: DailySummary): void {
   db.prepare(
     `INSERT OR REPLACE INTO daily_summaries
-    (date, headline, summary, highlights, improvements, drill_down_sections,
-     total_tracked_secs, total_idle_secs, total_productive_secs, total_distracted_secs,
-     top_apps, top_projects)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     (date, headline, summary, highlights, improvements, drill_down_sections,
+      total_tracked_secs, total_idle_secs, total_productive_secs, total_distracted_secs,
+      top_apps, top_projects, generated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     ds.date,
     ds.headline,
@@ -517,6 +533,7 @@ export function upsertDailySummary(ds: DailySummary): void {
     ds.totalDistractedSecs,
     JSON.stringify(ds.topApps),
     JSON.stringify(ds.topProjects),
+    ds.generatedAt || Math.floor(Date.now() / 1000),
   );
 }
 
@@ -538,6 +555,7 @@ export function getDailySummary(date: string): DailySummary | null {
     totalDistractedSecs: row.total_distracted_secs as number,
     topApps: JSON.parse(row.top_apps as string),
     topProjects: JSON.parse(row.top_projects as string),
+    generatedAt: row.generated_at as number | undefined,
   };
 }
 
@@ -723,6 +741,58 @@ export function getLatestMicroSummary(sessionId: string): MicroSummary | null {
     .get(sessionId) as Record<string, unknown> | undefined;
   if (!row) return null;
   return mapMicro(row);
+}
+
+export function getLatestMicroSummaryForDate(date: string): MicroSummary | null {
+  const dayStart = dateToEpoch(date);
+  const dayEnd = dayStart + 86400;
+  const row = db
+    .prepare(
+      'SELECT * FROM micro_summaries WHERE start_time >= ? AND end_time <= ? ORDER BY end_time DESC LIMIT 1',
+    )
+    .get(dayStart, dayEnd) as Record<string, unknown> | undefined;
+  if (!row) return null;
+  return mapMicro(row);
+}
+
+export function getLatestSessionSummaryForDate(date: string): SessionSummary | null {
+  const row = db
+    .prepare(
+      'SELECT * FROM session_summaries WHERE date = ? ORDER BY end_time DESC LIMIT 1',
+    )
+    .get(date) as Record<string, unknown> | undefined;
+  if (!row) return null;
+  return mapSession(row);
+}
+
+export function insertSummarySnapshot(snapshot: {
+  date: string;
+  kind: string;
+  summary: string;
+  sourceSessionId?: string;
+}): number {
+  const result = db
+    .prepare(
+      `INSERT INTO summary_snapshots (date, kind, summary, source_session_id, generated_at)
+       VALUES (?, ?, ?, ?, ?)`,
+    )
+    .run(
+      snapshot.date,
+      snapshot.kind,
+      snapshot.summary,
+      snapshot.sourceSessionId || null,
+      Math.floor(Date.now() / 1000),
+    );
+  return Number(result.lastInsertRowid);
+}
+
+export function getLatestSummarySnapshot(date: string): { summary: string; kind: string } | null {
+  const row = db
+    .prepare(
+      'SELECT summary, kind FROM summary_snapshots WHERE date = ? ORDER BY generated_at DESC LIMIT 1',
+    )
+    .get(date) as { summary: string; kind: string } | undefined;
+  return row || null;
 }
 
 // ── Helpers ──

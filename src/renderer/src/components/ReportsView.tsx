@@ -70,9 +70,6 @@ export default function ReportsView({ timeFormat }: Props) {
           <div>
             <h1 className="text-2xl">Reports</h1>
           </div>
-          <div className="px-3 py-1.5 bg-muted text-muted-foreground rounded-full text-sm">
-            Analytics
-          </div>
         </div>
 
         <div className="text-sm text-muted-foreground">
@@ -84,7 +81,7 @@ export default function ReportsView({ timeFormat }: Props) {
             <BarChart3 className="w-16 h-16 text-muted-foreground/30 mb-4" />
             <h3 className="text-lg mb-2">No reports available</h3>
             <p className="text-sm text-muted-foreground max-w-sm">
-              Start a recording session to see analytics and insights about your productivity.
+              Start a tracking session to see analytics and insights about your productivity.
             </p>
           </div>
         ) : (

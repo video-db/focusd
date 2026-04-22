@@ -10,13 +10,14 @@ interface Props {
   end: number;
   timeFormat: TimeFormat;
   onClose: () => void;
+  initialLevel?: Level;
 }
 
 type Level = 'summaries' | 'activities' | 'deepdive';
 
-export default function DrillDown({ start, end, timeFormat, onClose }: Props) {
+export default function DrillDown({ start, end, timeFormat, onClose, initialLevel = 'summaries' }: Props) {
   const api = useAPI();
-  const [level, setLevel] = useState<Level>('summaries');
+  const [level, setLevel] = useState<Level>(initialLevel);
   const [micros, setMicros] = useState<MicroSummary[]>([]);
   const [segments, setSegments] = useState<ActivitySegment[]>([]);
   const [deepDive, setDeepDive] = useState<DeepDiveResult | null>(null);
@@ -24,8 +25,13 @@ export default function DrillDown({ start, end, timeFormat, onClose }: Props) {
   const [selectedRange, setSelectedRange] = useState({ start, end });
 
   useEffect(() => {
-    loadMicros();
-  }, [start, end]);
+    setSelectedRange({ start, end });
+    if (initialLevel === 'activities') {
+      void loadSegments(start, end);
+      return;
+    }
+    void loadMicros();
+  }, [start, end, initialLevel]);
 
   const loadMicros = async () => {
     setLoading(true);
