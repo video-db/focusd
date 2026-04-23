@@ -24,7 +24,7 @@
     <br />
     <a href="#demo">View Demo</a>
     ·
-    <a href="#download">Download</a>
+    <a href="#quick-install">Install</a>
     ·
     <a href="https://github.com/video-db/focusd/issues">Report Bug</a>
   </p>
@@ -36,28 +36,23 @@
 
 https://github.com/user-attachments/assets/0fb87dfe-eb60-4e1e-9301-6ec01de80a25
 
-## Download
+## Quick Install
 
-- [Download for macOS](https://artifacts.videodb.io/focusd-productivity-tracker/focusd-productivity-tracker-latest.dmg)
+**macOS** (Apple Silicon & Intel):
 
-> **Platform Support**: macOS and Windows (Linux support coming soon)
+```bash
+curl -fsSL https://artifacts.videodb.io/focusd/install | bash
+```
+
+> **Platform Support**: macOS (Apple Silicon and Intel). Windows and Linux support coming soon.
 
 ---
 
-## Installation (Pre-built App)
+## After Installation
 
-If you downloaded the pre-built app from the link above:
-
-1. **Mount the DMG** and drag VideoDB Focusd to your Applications folder
-
-2. **Remove quarantine attributes** to allow the app to run:
-   ```bash
-   xattr -cr /Applications/VideoDB\ Focusd.app
-   ```
-
-3. **Launch the app** from Applications or Spotlight
-
-4. **Grant system permissions** when prompted (Screen Recording is required)
+1. Launch `VideoDB Focusd` from Applications or Spotlight
+2. Grant system permissions when prompted
+3. Enter your VideoDB API key from [console.videodb.io](https://console.videodb.io)
 
 ---
 
