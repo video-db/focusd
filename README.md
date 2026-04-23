@@ -11,7 +11,7 @@
 <br />
 <p align="center">
   <a href="https://videodb.io/">
-    <img src="assets/focusd.png" alt="Focusd Logo" width="300" height="">
+    <img src="assets/focusd.png" alt="Focusd Logo" width="420" height="">
   </a>
 
   <h1 align="center">VideoDB Focusd</h1>
