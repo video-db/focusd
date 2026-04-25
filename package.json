@@ -11,6 +11,7 @@
     "package:mac": "unset ELECTRON_RUN_AS_NODE; electron-vite build && electron-builder --mac",
     "package:win": "unset ELECTRON_RUN_AS_NODE; electron-vite build && electron-builder --win",
     "reset:db": "rm -f \"$HOME/Library/Application Support/videodb-focusd/focusd.db\" \"$HOME/Library/Application Support/VideoDB Focusd/focusd.db\" && echo 'Database deleted (dev + packaged). It will be recreated on next launch.'",
+    "reset:dev": "bash scripts/reset-dev.sh",
     "postinstall": "electron-rebuild -f -w better-sqlite3 && if [ -f node_modules/electron/dist/Electron.app/Contents/Info.plist ]; then plutil -replace CFBundleDisplayName -string 'VideoDB Focusd' node_modules/electron/dist/Electron.app/Contents/Info.plist && plutil -replace CFBundleName -string 'VideoDB Focusd' node_modules/electron/dist/Electron.app/Contents/Info.plist && touch node_modules/electron/dist/Electron.app && echo 'Patched Electron plist with app name'; fi"
   },
   "dependencies": {
