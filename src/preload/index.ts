@@ -1,55 +1,48 @@
-import { contextBridge, ipcRenderer } from 'electron';
-import type { FocusdAPI, RecordingState, MicroSummary, Settings } from '../shared/types';
+import { contextBridge } from 'electron';
+import type { FocusdAPI } from '../shared/types';
+import { ipcInvoke, ipcOn } from './ipc-utils';
 
 const api: FocusdAPI = {
   app: {
-    info: () => ipcRenderer.invoke('app:info'),
+    info: () => ipcInvoke('app:info'),
   },
   onboarding: {
-    state: () => ipcRenderer.invoke('onboarding:state'),
-    validateKey: (apiKey) => ipcRenderer.invoke('onboarding:validateKey', apiKey),
-    saveKey: (apiKey) => ipcRenderer.invoke('onboarding:saveKey', apiKey),
-    clearKey: () => ipcRenderer.invoke('onboarding:clearKey'),
-    complete: () => ipcRenderer.invoke('onboarding:complete'),
-    getPermissions: () => ipcRenderer.invoke('onboarding:getPermissions'),
-    requestMicPermission: () => ipcRenderer.invoke('onboarding:requestMicPermission'),
-    openScreenPermissions: () => ipcRenderer.invoke('onboarding:openScreenPermissions'),
-    openMicPermissions: () => ipcRenderer.invoke('onboarding:openMicPermissions'),
-    getKeyInfo: () => ipcRenderer.invoke('onboarding:getKeyInfo'),
+    state: () => ipcInvoke('onboarding:state'),
+    validateKey: (apiKey) => ipcInvoke('onboarding:validateKey', apiKey),
+    saveKey: (apiKey) => ipcInvoke('onboarding:saveKey', apiKey),
+    clearKey: () => ipcInvoke('onboarding:clearKey'),
+    complete: () => ipcInvoke('onboarding:complete'),
+    getPermissions: () => ipcInvoke('onboarding:getPermissions'),
+    requestMicPermission: () => ipcInvoke('onboarding:requestMicPermission'),
+    openScreenPermissions: () => ipcInvoke('onboarding:openScreenPermissions'),
+    openMicPermissions: () => ipcInvoke('onboarding:openMicPermissions'),
+    getKeyInfo: () => ipcInvoke('onboarding:getKeyInfo'),
   },
   capture: {
-    start: (screenId?: string) => ipcRenderer.invoke('capture:start', screenId),
-    stop: () => ipcRenderer.invoke('capture:stop'),
-    status: () => ipcRenderer.invoke('capture:status'),
-    listScreens: () => ipcRenderer.invoke('capture:listScreens'),
+    start: (screenId) => ipcInvoke('capture:start', screenId),
+    stop: () => ipcInvoke('capture:stop'),
+    status: () => ipcInvoke('capture:status'),
+    listScreens: () => ipcInvoke('capture:listScreens'),
   },
   summary: {
-    generateNow: () => ipcRenderer.invoke('summary:generateNow'),
-    daily: (date) => ipcRenderer.invoke('summary:daily', date),
-    refreshDaily: (date) => ipcRenderer.invoke('summary:daily-refresh', date),
-    sessionList: (date) => ipcRenderer.invoke('summary:session-list', date),
-    microList: (start, end) => ipcRenderer.invoke('summary:micro-list', start, end),
-    segments: (start, end) => ipcRenderer.invoke('summary:segments', start, end),
-    deepDive: (start, end) => ipcRenderer.invoke('summary:deep-dive', start, end),
+    generateNow: () => ipcInvoke('summary:generateNow'),
+    daily: (date) => ipcInvoke('summary:daily', date),
+    refreshDaily: (date) => ipcInvoke('summary:daily-refresh', date),
+    sessionList: (date) => ipcInvoke('summary:session-list', date),
+    microList: (start, end) => ipcInvoke('summary:micro-list', start, end),
+    segments: (start, end) => ipcInvoke('summary:segments', start, end),
+    deepDive: (start, end) => ipcInvoke('summary:deep-dive', start, end),
   },
   dashboard: {
-    today: () => ipcRenderer.invoke('dashboard:today'),
-    appUsage: (date) => ipcRenderer.invoke('dashboard:app-usage', date),
+    today: () => ipcInvoke('dashboard:today'),
+    appUsage: (date) => ipcInvoke('dashboard:app-usage', date),
   },
   settings: {
-    get: () => ipcRenderer.invoke('settings:get'),
-    update: (s) => ipcRenderer.invoke('settings:update', s),
+    get: () => ipcInvoke('settings:get'),
+    update: (s) => ipcInvoke('settings:update', s),
   },
-  onRecordingStateChange: (cb: (state: RecordingState) => void) => {
-    const handler = (_: Electron.IpcRendererEvent, state: RecordingState) => cb(state);
-    ipcRenderer.on('recording-state', handler);
-    return () => ipcRenderer.removeListener('recording-state', handler);
-  },
-  onNewSummary: (cb: (summary: MicroSummary) => void) => {
-    const handler = (_: Electron.IpcRendererEvent, summary: MicroSummary) => cb(summary);
-    ipcRenderer.on('new-summary', handler);
-    return () => ipcRenderer.removeListener('new-summary', handler);
-  },
+  onRecordingStateChange: (cb) => ipcOn('recording-state', cb),
+  onNewSummary: (cb) => ipcOn('new-summary', cb),
 };
 
 contextBridge.exposeInMainWorld('api', api);

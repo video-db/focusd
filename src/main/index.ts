@@ -4,6 +4,7 @@ import 'dotenv/config';
 import { loadConfig, getConfig } from './services/config';
 import { initDatabase } from './services/database';
 import { registerIPCHandlers, initServices, setMainWindow } from './ipc-handlers';
+import { ipcWebContentsSend } from './ipc-utils';
 import { createTray, destroyTray, setRecordingState } from './tray';
 import { cleanupStaleRecorder } from './services/capture';
 import { log, error } from './services/logger';
@@ -111,10 +112,10 @@ app.whenReady().then(async () => {
 
   createTray({
     onStartRecording: () => {
-      mainWindow?.webContents.send('tray-action', 'start');
+      if (mainWindow) ipcWebContentsSend('tray-action', mainWindow.webContents, 'start');
     },
     onStopRecording: () => {
-      mainWindow?.webContents.send('tray-action', 'stop');
+      if (mainWindow) ipcWebContentsSend('tray-action', mainWindow.webContents, 'stop');
     },
     onOpenDashboard: () => {
       if (mainWindow) {

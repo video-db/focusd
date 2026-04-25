@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, desktopCapturer, systemPreferences, shell } from 'electron';
+import { BrowserWindow, desktopCapturer, systemPreferences, shell } from 'electron';
 import * as db from './services/database';
 import { getConfig } from './services/config';
 import { CaptureService } from './services/capture';
@@ -24,7 +24,9 @@ import {
 import { hasApiKey, storeApiKey, loadApiKey, clearApiKey, isOnboardingComplete, markOnboardingComplete } from './services/keystore';
 import { setRecordingState } from './tray';
 import { log, warn, error, getLogDir } from './services/logger';
+import { ipcMainHandle, ipcWebContentsSend } from './ipc-utils';
 import type { RecordingState, Settings, PermissionStatus } from '../shared/types';
+import type { IpcSendChannels } from '../shared/ipc-contract';
 
 const TAG = 'IPC';
 
@@ -35,9 +37,12 @@ export function setMainWindow(win: BrowserWindow): void {
   mainWindow = win;
 }
 
-function sendToRenderer(channel: string, ...args: unknown[]): void {
+function sendToRenderer<K extends keyof IpcSendChannels>(
+  channel: K,
+  payload: IpcSendChannels[K],
+): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send(channel, ...args);
+    ipcWebContentsSend(channel, mainWindow.webContents, payload);
   }
 }
 
@@ -87,7 +92,7 @@ export function registerIPCHandlers(): void {
 
   // ── App Info ──
 
-  ipcMain.handle('app:info', () => {
+  ipcMainHandle('app:info', () => {
     const cfg = getConfig();
     return {
       name: cfg.app.name,
@@ -97,17 +102,17 @@ export function registerIPCHandlers(): void {
     };
   });
 
-  ipcMain.handle('app:logDir', () => getLogDir());
+  ipcMainHandle('app:logDir', () => getLogDir());
 
   // ── Onboarding ──
 
-  ipcMain.handle('onboarding:state', () => {
+  ipcMainHandle('onboarding:state', () => {
     const hasKey = hasApiKey() || !!process.env.VIDEODB_API_KEY;
     const completed = isOnboardingComplete();
     return { hasApiKey: hasKey, needsOnboarding: !hasKey || !completed };
   });
 
-  ipcMain.handle('onboarding:validateKey', async (_e, apiKey: string) => {
+  ipcMainHandle('onboarding:validateKey', async (apiKey: string) => {
     log(TAG, 'Validating API key...');
     try {
       const { connect } = await import('videodb');
@@ -122,7 +127,7 @@ export function registerIPCHandlers(): void {
     }
   });
 
-  ipcMain.handle('onboarding:saveKey', async (_e, apiKey: string) => {
+  ipcMainHandle('onboarding:saveKey', async (apiKey: string) => {
     log(TAG, 'Saving API key...');
     storeApiKey(apiKey);
     // Re-initialize services with the new key
@@ -130,16 +135,16 @@ export function registerIPCHandlers(): void {
     log(TAG, 'Services re-initialized with new API key');
   });
 
-  ipcMain.handle('onboarding:clearKey', () => {
+  ipcMainHandle('onboarding:clearKey', () => {
     clearApiKey();
     log(TAG, 'API key cleared');
   });
 
-  ipcMain.handle('onboarding:complete', () => {
+  ipcMainHandle('onboarding:complete', () => {
     markOnboardingComplete();
   });
 
-  ipcMain.handle('onboarding:getKeyInfo', () => {
+  ipcMainHandle('onboarding:getKeyInfo', () => {
     const storedKey = loadApiKey();
     if (storedKey) {
       return { preview: storedKey.slice(0, 12) + '...', source: 'keystore' };
@@ -151,30 +156,30 @@ export function registerIPCHandlers(): void {
     return { preview: '', source: 'none' };
   });
 
-  ipcMain.handle('onboarding:getPermissions', () => {
+  ipcMainHandle('onboarding:getPermissions', () => {
     const screen = systemPreferences.getMediaAccessStatus('screen') as PermissionStatus;
     const microphone = systemPreferences.getMediaAccessStatus('microphone') as PermissionStatus;
     log(TAG, `Permissions: screen=${screen}, microphone=${microphone}`);
     return { screen, microphone };
   });
 
-  ipcMain.handle('onboarding:requestMicPermission', async () => {
+  ipcMainHandle('onboarding:requestMicPermission', async () => {
     const granted = await systemPreferences.askForMediaAccess('microphone');
     log(TAG, `Microphone permission ${granted ? 'granted' : 'denied'}`);
     return granted;
   });
 
-  ipcMain.handle('onboarding:openScreenPermissions', () => {
+  ipcMainHandle('onboarding:openScreenPermissions', () => {
     shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture');
   });
 
-  ipcMain.handle('onboarding:openMicPermissions', () => {
+  ipcMainHandle('onboarding:openMicPermissions', () => {
     shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone');
   });
 
   // ── Capture ──
 
-  ipcMain.handle('capture:listScreens', async () => {
+  ipcMainHandle('capture:listScreens', async () => {
     log(TAG, 'Listing available screens...');
     const sources = await desktopCapturer.getSources({
       types: ['screen'],
@@ -196,7 +201,7 @@ export function registerIPCHandlers(): void {
     }));
   });
 
-  ipcMain.handle('capture:start', async (_e, screenId?: string) => {
+  ipcMainHandle('capture:start', async (screenId?: string) => {
     const settings = db.getSettings();
     const cfg = getConfig();
     sendToRenderer('recording-state', 'starting' as RecordingState);
@@ -258,7 +263,7 @@ export function registerIPCHandlers(): void {
     }
   });
 
-  ipcMain.handle('capture:stop', async () => {
+  ipcMainHandle('capture:stop', async () => {
     log(TAG, 'capture:stop invoked');
     sendToRenderer('recording-state', 'stopping' as RecordingState);
 
@@ -291,7 +296,7 @@ export function registerIPCHandlers(): void {
     }
   });
 
-  ipcMain.handle('capture:status', () => {
+  ipcMainHandle('capture:status', () => {
     const session = db.getActiveCaptureSession();
     return {
       recording: capture.isRecording(),
@@ -302,7 +307,7 @@ export function registerIPCHandlers(): void {
 
   // ── Summaries ──
 
-  ipcMain.handle('summary:generateNow', async () => {
+  ipcMainHandle('summary:generateNow', async () => {
     log(TAG, 'summary:generateNow invoked');
     try {
       const result = await generateOnDemandSummary();
@@ -320,7 +325,7 @@ export function registerIPCHandlers(): void {
     }
   });
 
-  ipcMain.handle('summary:daily', async (_e, date: string) => {
+  ipcMainHandle('summary:daily', async (date: string) => {
     log(TAG, `summary:daily requested for ${date}`);
     let daily = db.getDailySummary(date);
     if (!daily) {
@@ -331,7 +336,7 @@ export function registerIPCHandlers(): void {
     return daily;
   });
 
-  ipcMain.handle('summary:daily-refresh', async (_e, date: string) => {
+  ipcMainHandle('summary:daily-refresh', async (date: string) => {
     log(TAG, `summary:daily-refresh requested for ${date}`);
     try {
       if (date === db.todayDateString() && capture.isRecording()) {
@@ -345,33 +350,33 @@ export function registerIPCHandlers(): void {
     }
   });
 
-  ipcMain.handle('summary:session-list', (_e, date: string) => {
+  ipcMainHandle('summary:session-list', (date: string) => {
     const sessions = db.getSessionSummaries(date);
     log(TAG, `summary:session-list for ${date}: ${sessions.length} session(s)`);
     return sessions;
   });
 
-  ipcMain.handle(
+  ipcMainHandle(
     'summary:micro-list',
-    (_e, start: number, end: number) => {
+    (start: number, end: number) => {
       const micros = db.getMicroSummaries(start, end);
       log(TAG, `summary:micro-list [${start}-${end}]: ${micros.length} micro(s)`);
       return micros;
     },
   );
 
-  ipcMain.handle(
+  ipcMainHandle(
     'summary:segments',
-    (_e, start: number, end: number) => {
+    (start: number, end: number) => {
       const segments = db.getActivitySegments(start, end);
       log(TAG, `summary:segments [${start}-${end}]: ${segments.length} segment(s)`);
       return segments;
     },
   );
 
-  ipcMain.handle(
+  ipcMainHandle(
     'summary:deep-dive',
-    async (_e, start: number, end: number) => {
+    async (start: number, end: number) => {
       log(TAG, `summary:deep-dive [${start}-${end}]`);
       return await generateDeepDive(start, end);
     },
@@ -379,7 +384,7 @@ export function registerIPCHandlers(): void {
 
   // ── Dashboard ──
 
-  ipcMain.handle('dashboard:today', () => {
+  ipcMainHandle('dashboard:today', () => {
     const date = db.todayDateString();
     const totalTracked = db.getTotalTrackedForDate(date);
     const totalIdle = Math.min(db.getIdleSecsForDate(date), totalTracked);
@@ -420,17 +425,17 @@ export function registerIPCHandlers(): void {
     };
   });
 
-  ipcMain.handle('dashboard:app-usage', (_e, date: string) => {
+  ipcMainHandle('dashboard:app-usage', (date: string) => {
     return db.getAppUsageForDate(date);
   });
 
   // ── Settings ──
 
-  ipcMain.handle('settings:get', () => {
+  ipcMainHandle('settings:get', () => {
     return db.getSettings();
   });
 
-  ipcMain.handle('settings:update', (_e, partial: Partial<Settings>) => {
+  ipcMainHandle('settings:update', (partial: Partial<Settings>) => {
     log(TAG, 'settings:update', partial);
     db.updateSettings(partial);
   });
