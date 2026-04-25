@@ -24,6 +24,7 @@ import {
 import { hasApiKey, storeApiKey, loadApiKey, clearApiKey, isOnboardingComplete, markOnboardingComplete } from './services/keystore';
 import { setRecordingState } from './tray';
 import { log, warn, error, getLogDir } from './services/logger';
+import { ensureScreenPermissionRegistered } from './util';
 import type { RecordingState, Settings, PermissionStatus } from '../shared/types';
 
 const TAG = 'IPC';
@@ -151,10 +152,14 @@ export function registerIPCHandlers(): void {
     return { preview: '', source: 'none' };
   });
 
-  ipcMain.handle('onboarding:getPermissions', () => {
+  ipcMain.handle('onboarding:getPermissions', async () => {
     const screen = systemPreferences.getMediaAccessStatus('screen') as PermissionStatus;
     const microphone = systemPreferences.getMediaAccessStatus('microphone') as PermissionStatus;
     log(TAG, `Permissions: screen=${screen}, microphone=${microphone}`);
+
+    // macOS dev-mode TCC workaround — see util.ts for the full explanation.
+    await ensureScreenPermissionRegistered(screen);
+
     return { screen, microphone };
   });
 
